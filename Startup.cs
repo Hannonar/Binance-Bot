@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.SpaServices.ReactDevelopmentServer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Binance_Bot
 {
@@ -28,6 +30,8 @@ namespace Binance_Bot
             {
                 configuration.RootPath = "ClientApp/build";
             });
+
+            services.AddHostedService<ApiCaller>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -66,6 +70,14 @@ namespace Binance_Bot
                     spa.UseReactDevelopmentServer(npmScript: "start");
                 }
             });
+        }
+    }
+
+    public class ApiCaller : BackgroundService
+    {
+        protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            return Task.CompletedTask;
         }
     }
 }
