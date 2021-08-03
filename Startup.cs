@@ -7,9 +7,18 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
+using System.Net.Http;
+//using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Binance.API.Csharp.Client;
+using System.Collections.Generic;
+using Binance.API.Csharp.Client.Models.Market;
+using Binance.API.Csharp.Client.Models.Enums;
 
 namespace Binance_Bot
 {
@@ -33,6 +42,7 @@ namespace Binance_Bot
                 configuration.RootPath = "ClientApp/build";
             });
 
+            services.AddHttpClient();
             services.AddHostedService<ApiCaller>();
         }
 
@@ -77,40 +87,58 @@ namespace Binance_Bot
 
     public class ApiCaller : IHostedService, IDisposable
     {
-        private int executionCount = 0;
+        private readonly IHttpClientFactory _httpFactory;
         private readonly ILogger<ApiCaller> _logger;
         private Timer _timer;
+        BinanceClient _client;
+        ApiClient _apiClient;
+        string _listenKey;
+        bool bidPlaced = false;
 
-        public ApiCaller(ILogger<ApiCaller> logger)
+        public ApiCaller(ILogger<ApiCaller> logger, IHttpClientFactory httpClientFactory)
         {
+            _httpFactory = httpClientFactory;
             _logger = logger;
+            _apiClient = new ApiClient("", "");
+            _client = new BinanceClient(_apiClient);
         }
 
         public Task StartAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Timed Hosted Service running.");
-
+            //_logger.LogInformation("Timed Hosted Service running.");
             _timer = new Timer(DoWork, null, TimeSpan.Zero,
-                TimeSpan.FromMinutes(1));
+                TimeSpan.FromMinutes(3));
+
+            _listenKey = _client.StartUserStream().Result.ListenKey;
+            _apiClient.ConnectToWebSocket("",);
+
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken stoppingToken)
+        {
+            /*_logger.LogInformation("Timed Hosted Service is stopping.");
+
+            _timer?.Change(Timeout.Infinite, 0);*/
+
+            _client.CloseUserStream(_listenKey);
 
             return Task.CompletedTask;
         }
 
         private void DoWork(object state)
         {
-            var count = Interlocked.Increment(ref executionCount);
-
-            _logger.LogInformation(
-                "Timed Hosted Service is working. Count: {Count}", count);
-        }
-
-        public Task StopAsync(CancellationToken stoppingToken)
-        {
-            _logger.LogInformation("Timed Hosted Service is stopping.");
-
-            _timer?.Change(Timeout.Infinite, 0);
-
-            return Task.CompletedTask;
+            if (!bidPlaced)
+            {
+                string symbol = "BTCUSDT";
+                decimal qnt = 10;
+                decimal buyProcent = 0.995M;
+                decimal sellProcent = 1.005M;
+                List<SymbolPrice> prices = new List<SymbolPrice>(_client.GetAllPrices().Result);
+                var marketprc = prices.Find(price => price.Symbol == symbol).Price;
+                decimal buyprc = marketprc * buyProcent;
+                var res = _client.PostNewOrderTest(symbol, qnt, buyprc, OrderSide.BUY).Result;
+            }
         }
 
         public void Dispose()
