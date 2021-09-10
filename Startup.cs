@@ -110,7 +110,6 @@ namespace Binance_Bot
                 TimeSpan.FromMinutes(3));
 
             _listenKey = _client.StartUserStream().Result.ListenKey;
-            _apiClient.ConnectToWebSocket("",);
 
             return Task.CompletedTask;
         }
@@ -130,14 +129,22 @@ namespace Binance_Bot
         {
             if (!bidPlaced)
             {
-                string symbol = "BTCUSDT";
-                decimal qnt = 10;
-                decimal buyProcent = 0.995M;
-                decimal sellProcent = 1.005M;
+                string symbol = "BNBUSDT";
+                decimal usdtqnt = 10;
+                decimal buyProcent = 0.996M;
+                decimal sellProcent = 1.006M;
+
                 List<SymbolPrice> prices = new List<SymbolPrice>(_client.GetAllPrices().Result);
                 var marketprc = prices.Find(price => price.Symbol == symbol).Price;
-                decimal buyprc = marketprc * buyProcent;
-                var res = _client.PostNewOrderTest(symbol, qnt, buyprc, OrderSide.BUY).Result;
+
+                decimal buyprc = decimal.Round(marketprc * buyProcent,6);
+                decimal sellprc = decimal.Round(marketprc * sellProcent, 6);
+
+                decimal buyqnt = decimal.Round((1 / buyprc) * usdtqnt, 6);
+                decimal sellqnt = decimal.Round((1 / sellprc) * usdtqnt, 6);
+
+
+                var res = _client.PostNewOrderTest(symbol, buyqnt, buyprc, OrderSide.BUY).Result;
             }
         }
 
